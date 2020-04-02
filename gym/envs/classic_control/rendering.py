@@ -62,6 +62,7 @@ class Viewer(object):
         self.isopen = True
         self.geoms = []
         self.onetime_geoms = []
+        self.onetime_draw = []
         self.transform = Transform()
 
         glEnable(GL_BLEND)
@@ -97,6 +98,8 @@ class Viewer(object):
             geom.render()
         for geom in self.onetime_geoms:
             geom.render()
+        for label in self.onetime_draw:
+            label.draw()
         self.transform.disable()
         arr = None
         if return_rgb_array:
@@ -113,6 +116,7 @@ class Viewer(object):
             arr = arr[::-1,:,0:3]
         self.window.flip()
         self.onetime_geoms = []
+        self.onetime_draw = []
         return arr if return_rgb_array else self.isopen
 
     # Convenience
@@ -139,6 +143,16 @@ class Viewer(object):
         _add_attrs(geom, attrs)
         self.add_onetime(geom)
         return geom
+
+    def draw_text(self, string):
+        label = pyglet.text.Label(string,
+                          font_name='Times New Roman',
+                          font_size=18,
+                          x=self.window.width, y=0,
+                          anchor_x='right', anchor_y='bottom',
+                          color=(0, 0, 0, 255))
+        self.onetime_draw.append(label)
+        return label
 
     def get_array(self):
         self.window.flip()
@@ -331,8 +345,8 @@ class SimpleImageViewer(object):
                 scale = self.maxwidth / width
                 width = int(scale * width)
                 height = int(scale * height)
-            self.window = pyglet.window.Window(width=width, height=height, 
-                display=self.display, vsync=False, resizable=True)            
+            self.window = pyglet.window.Window(width=width, height=height,
+                display=self.display, vsync=False, resizable=True)
             self.width = width
             self.height = height
             self.isopen = True
@@ -347,9 +361,9 @@ class SimpleImageViewer(object):
                 self.isopen = False
 
         assert len(arr.shape) == 3, "You passed in an image with the wrong number shape"
-        image = pyglet.image.ImageData(arr.shape[1], arr.shape[0], 
+        image = pyglet.image.ImageData(arr.shape[1], arr.shape[0],
             'RGB', arr.tobytes(), pitch=arr.shape[1]*-3)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, 
+        gl.glTexParameteri(gl.GL_TEXTURE_2D,
             gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
         texture = image.get_texture()
         texture.width = self.width
