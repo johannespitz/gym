@@ -6,17 +6,17 @@ from gym import Wrapper
 
 
 class LazyFrames(object):
-    r"""Ensures common frames are only stored once to optimize memory use. 
+    r"""Ensures common frames are only stored once to optimize memory use.
 
-    To further reduce the memory use, it is optionally to turn on lz4 to 
+    To further reduce the memory use, it is optionally to turn on lz4 to
     compress the observations.
 
     .. note::
 
-        This object should only be converted to numpy array just before forward pass. 
+        This object should only be converted to numpy array just before forward pass.
 
     """
-    def __init__(self, frames, lz4_compress=False):
+    def __init__(self, frames, lz4_compress=False, flatten=False):
         if lz4_compress:
             from lz4.block import compress
             self.frame_shape = frames[0].shape
@@ -24,6 +24,7 @@ class LazyFrames(object):
             frames = [compress(frame) for frame in frames]
         self._frames = frames
         self.lz4_compress = lz4_compress
+        self.flatten = flatten
 
     def __array__(self, dtype=None):
         if self.lz4_compress:
@@ -34,6 +35,8 @@ class LazyFrames(object):
         out = np.stack(frames, axis=0)
         if dtype is not None:
             out = out.astype(dtype)
+        if self.flatten is True:
+            out = out.reshape(-1)
         return out
 
     def __len__(self):
@@ -51,12 +54,12 @@ class LazyFrames(object):
 
 
 class FrameStack(Wrapper):
-    r"""Observation wrapper that stacks the observations in a rolling manner. 
+    r"""Observation wrapper that stacks the observations in a rolling manner.
 
     For example, if the number of stacks is 4, then the returned observation contains
     the most recent 4 observations. For environment 'Pendulum-v0', the original observation
     is an array with shape [3], so if we stack 4 observations, the processed observation
-    has shape [3, 4]. 
+    has shape [3, 4].
 
     .. note::
 
@@ -65,7 +68,7 @@ class FrameStack(Wrapper):
     .. note::
 
         The observation space must be `Box` type. If one uses `Dict`
-        as observation space, it should apply `FlattenDictWrapper` at first. 
+        as observation space, it should apply `FlattenDictWrapper` at first.
 
     Example::
 
@@ -80,20 +83,25 @@ class FrameStack(Wrapper):
         num_stack (int): number of stacks
 
     """
-    def __init__(self, env, num_stack, lz4_compress=False):
+    def __init__(self, env, num_stack, lz4_compress=False, flatten=False):
         super(FrameStack, self).__init__(env)
         self.num_stack = num_stack
         self.lz4_compress = lz4_compress
+        self.flatten = flatten
 
         self.frames = deque(maxlen=num_stack)
 
-        low = np.repeat(self.observation_space.low[np.newaxis, ...], num_stack, axis=0)
-        high = np.repeat(self.observation_space.high[np.newaxis, ...], num_stack, axis=0)
+        if flatten is True:
+            low = np.repeat(self.observation_space.low[np.newaxis, ...], num_stack, axis=0).reshape(-1)
+            high = np.repeat(self.observation_space.high[np.newaxis, ...], num_stack, axis=0).reshape(-1)
+        else:
+            low = np.repeat(self.observation_space.low[np.newaxis, ...], num_stack, axis=0)
+            high = np.repeat(self.observation_space.high[np.newaxis, ...], num_stack, axis=0)
         self.observation_space = Box(low=low, high=high, dtype=self.observation_space.dtype)
 
     def _get_observation(self):
         assert len(self.frames) == self.num_stack, (len(self.frames), self.num_stack)
-        return LazyFrames(list(self.frames), self.lz4_compress)
+        return LazyFrames(list(self.frames), self.lz4_compress, self.flatten)
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
