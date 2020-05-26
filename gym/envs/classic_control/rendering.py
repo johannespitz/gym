@@ -118,8 +118,8 @@ class Viewer(object):
         return arr if return_rgb_array else self.isopen
 
     # Convenience
-    def draw_circle(self, radius=10, res=30, filled=True, **attrs):
-        geom = make_circle(radius=radius, res=res, filled=filled)
+    def draw_circle(self, radius=10, res=30, filled=True, pos=(0.0, 0.0), **attrs):
+        geom = make_circle(radius=radius, res=res, filled=filled, position=pos)
         _add_attrs(geom, attrs)
         self.add_onetime(geom)
         return geom
@@ -252,11 +252,11 @@ class FilledPolygon(Geom):
             glVertex3f(p[0], p[1],0)  # draw each vertex
         glEnd()
 
-def make_circle(radius=10, res=30, filled=True):
+def make_circle(radius=10, res=30, filled=True, position=(0.0, 0.0)):
     points = []
     for i in range(res):
         ang = 2*math.pi*i / res
-        points.append((math.cos(ang)*radius, math.sin(ang)*radius))
+        points.append((math.cos(ang)*radius, math.sin(ang)*radius) + position)
     if filled:
         return FilledPolygon(points)
     else:
