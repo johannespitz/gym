@@ -103,8 +103,8 @@ class FrameStack(Wrapper):
         assert len(self.frames) == self.num_stack, (len(self.frames), self.num_stack)
         return LazyFrames(list(self.frames), self.lz4_compress, self.flatten)
 
-    def step(self, action):
-        observation, reward, done, info = self.env.step(action)
+    def step(self, action, **kwargs):
+        observation, reward, done, info = self.env.step(action, **kwargs)
         self.frames.append(observation)
         return self._get_observation(), reward, done, info
 
